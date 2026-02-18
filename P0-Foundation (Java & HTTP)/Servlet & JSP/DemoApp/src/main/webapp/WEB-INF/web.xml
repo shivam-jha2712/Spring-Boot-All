@@ -10,5 +10,16 @@
 	<servlet-name>adder</servlet-name>
 	<url-pattern>/add</url-pattern>
 </servlet-mapping>
+
+<servlet> <!-- In a file there can be multiple servlet -->
+	<servlet-name>squarer</servlet-name>
+	<servlet-class>com.shivamjha2712.SqServlet</servlet-class> <!-- This is supposed to be given as a fully qualified name also having the package name as well to work it out -->
+</servlet>
+
+<servlet-mapping>
+	<servlet-name>squarer</servlet-name>
+	<url-pattern>/sq</url-pattern>
+</servlet-mapping>
+
 	
 </web-app>
