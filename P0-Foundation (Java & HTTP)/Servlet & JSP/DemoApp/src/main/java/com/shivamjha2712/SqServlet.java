@@ -3,12 +3,15 @@ package com.shivamjha2712;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+@WebServlet("/sq") // Annotation is used instead of creating a sepreate web.xml file for mapping all the servelet - now simply on the basis of url used.
+// It could be found that which servlet needs to be called when a request is raised. 
 public class SqServlet extends HttpServlet {
 	
 	public void doGet(HttpServletRequest req, HttpServletResponse res) throws IOException {
