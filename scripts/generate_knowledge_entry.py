@@ -665,7 +665,7 @@ CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(Inversion of Control|IoC|interface\b.*\bimplements\b|\bimplements\b.*Service)",
+        r"(?i)(Inversion.of.Control|\bIoC\b|\bimplements\b.*Service)",
         {
             "name": "Inversion of Control (IoC) & Interface-based Design",
             "explanation": (
@@ -997,7 +997,7 @@ GENERAL_CONCEPT_REGISTRY = [
     ),
     # ── Java fundamentals (operators, casting, strings, loops) ──────────
     (
-        r"(?i)\b(auto.?box|unbox|wrapper.class|Integer\b|Double\b|Boolean\b)\b",
+        r"(?i)\b(auto.?box|unbox|wrapper.class)\b|Integer\.valueOf|\.intValue\(\)",
         {
             "name": "Java Auto-boxing & Unboxing",
             "explanation": (
@@ -1022,7 +1022,7 @@ GENERAL_CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(?i)\b(type.?cast|explicit.cast|narrow.conver|widen.conver|\(int\)\s|\(double\)\s)",
+        r"(?i)\b(type.?cast|explicit.cast|narrow.conver|widen.conver)\b|\([a-z]+\)\s*\w",
         {
             "name": "Java Type Casting",
             "explanation": (
@@ -1049,7 +1049,7 @@ GENERAL_CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(?i)\b(for.loop|while.loop|do.while|loop.iteration|for\s*\(|while\s*\()",
+        r"(?i)\b(for.loop|while.loop|do.while|loop.iteration)\b|\bfor\s*\(|\bwhile\s*\(|\bdo\s*\{",
         {
             "name": "Java Loop Constructs",
             "explanation": (
@@ -1105,7 +1105,7 @@ GENERAL_CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(?i)\b(constructor\b|new\s+\w+\s*\(|this\s*\(|object.creation|instantiat)",
+        r"(?i)\b(constructor\b|this\s*\(|object.creation|instantiat)\b|new\s+[\w.]+\s*\(",
         {
             "name": "Java Constructors & Object Creation",
             "explanation": (
@@ -1283,7 +1283,7 @@ GENERAL_CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(?i)\b(string.concat|StringBuilder|StringBuffer|immutable.string|\+\s*\")",
+        r"(?i)\b(string.concat|StringBuilder|StringBuffer|immutable.string)\b",
         {
             "name": "Java String Handling & Concatenation",
             "explanation": (
@@ -1308,7 +1308,7 @@ GENERAL_CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(?i)\b(data.?types?|primitiv|int\b|double\b|float\b|char\b|long\b|boolean\b|byte\b|short\b)",
+        r"(?i)\b(data.?types?|primitiv)\b|\b(int|double|float|char|long|boolean|byte|short)\b",
         {
             "name": "Java Primitive Data Types",
             "explanation": (

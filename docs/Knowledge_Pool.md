@@ -184,14 +184,6 @@ The `ApplicationContext` is the central interface of the Spring IoC container. I
 - [Spring Core — ApplicationContext](https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#context-introduction)
 - [Baeldung: ApplicationContext in Spring](https://www.baeldung.com/spring-application-context)
 
-#### Java Auto-boxing & Unboxing
-
-Auto-boxing is the automatic conversion from a primitive (`int`, `double`, `boolean`) to its wrapper class (`Integer`, `Double`, `Boolean`). Unboxing is the reverse. The compiler inserts `valueOf()` / `intValue()` calls behind the scenes. While convenient, excessive auto-boxing in hot loops can cause unnecessary object creation and GC pressure.
-
-**References:**
-- [Oracle Java Tutorials — Autoboxing and Unboxing](https://docs.oracle.com/javase/tutorial/java/data/autoboxing.html)
-- [Baeldung: Java Wrapper Classes](https://www.baeldung.com/java-wrapper-classes)
-
 #### Java Type Casting
 
 Java supports two kinds of type conversion:
@@ -304,14 +296,6 @@ In Spring, constructor-injected fields are typically `final`, guaranteeing the d
 **References:**
 - [Jakarta Servlet — HttpServletResponse](https://jakarta.ee/specifications/servlet/6.0/)
 - [Baeldung: Guide to PrintWriter](https://www.baeldung.com/java-printwriter)
-
-#### Java String Handling & Concatenation
-
-Java `String` objects are **immutable** — every concatenation with `+` creates a new `String` behind the scenes. For a small number of concatenations the compiler optimises via `StringBuilder`, but in loops you should use `StringBuilder` explicitly to avoid O(n²) copying. `StringBuffer` is the thread-safe (synchronised) variant, rarely needed in modern code.
-
-**References:**
-- [Oracle Java Tutorials — Strings](https://docs.oracle.com/javase/tutorial/java/data/strings.html)
-- [Baeldung: StringBuilder vs StringBuffer](https://www.baeldung.com/java-string-builder-string-buffer)
 
 #### Java Primitive Data Types
 
