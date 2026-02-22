@@ -21,3 +21,6 @@ public class StripePaymentService implements  PaymentService{
         return payment;
     }
 }
+
+
+//This is another bean class that has been created and which can be switched on the basis of properties which the class is currently using.
