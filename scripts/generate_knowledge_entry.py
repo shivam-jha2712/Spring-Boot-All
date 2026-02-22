@@ -379,7 +379,7 @@ CONCEPT_REGISTRY = [
         },
     ),
     (
-        r"(@Autowired|@Inject)\b",
+        r"(@Autowired|@Inject|Dependency Injection|Constructor.*Injection)\b",
         {
             "name": "Spring Dependency Injection",
             "explanation": (
@@ -550,6 +550,133 @@ CONCEPT_REGISTRY = [
             ],
         },
     ),
+    (
+        r"(@ConditionalOnProperty|@ConditionalOnBean|@ConditionalOnMissingBean|@ConditionalOnClass)",
+        {
+            "name": "Spring Boot Conditional Bean Configuration",
+            "explanation": (
+                "Spring Boot conditional annotations control whether a bean is registered "
+                "based on runtime conditions. `@ConditionalOnProperty` activates a bean "
+                "only when a specific property matches a given value — ideal for switching "
+                "between implementations (e.g., payment providers) via `application.properties`. "
+                "`@ConditionalOnBean` and `@ConditionalOnMissingBean` check for the "
+                "presence or absence of other beans in the context."
+            ),
+            "image_key": "conditional_bean_config",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-boot/docs/current/reference/html/"
+                    "features.html#features.developing-auto-configuration.condition-annotations",
+                    "Spring Boot — Condition Annotations",
+                ),
+                (
+                    "https://www.baeldung.com/spring-conditionalonproperty",
+                    "Baeldung: @ConditionalOnProperty Guide",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(CommandLineRunner|ApplicationRunner)",
+        {
+            "name": "Spring Boot Application Startup Runners",
+            "explanation": (
+                "`CommandLineRunner` and `ApplicationRunner` are functional interfaces "
+                "whose `run` method is invoked once the `ApplicationContext` is fully "
+                "initialised. They are used to execute one-time startup logic — such as "
+                "seeding a database, warming a cache, or verifying external services — "
+                "without resorting to `@PostConstruct` or static initialiser blocks."
+            ),
+            "image_key": "command_line_runner",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-boot/docs/current/reference/html/"
+                    "features.html#features.spring-application.command-line-runner",
+                    "Spring Boot Reference — CommandLineRunner",
+                ),
+                (
+                    "https://www.baeldung.com/running-setup-logic-on-startup-in-spring",
+                    "Baeldung: Running Logic on Startup in Spring",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(HttpServlet|@WebServlet|HttpServletRequest|HttpServletResponse|RequestDispatcher)",
+        {
+            "name": "Java Servlet Fundamentals",
+            "explanation": (
+                "Java Servlets are the foundation of server-side web development in Java. "
+                "`HttpServlet` processes HTTP requests via `doGet`/`doPost` methods. "
+                "`HttpServletRequest` and `HttpServletResponse` provide access to request "
+                "parameters, headers, cookies, and sessions. `RequestDispatcher` enables "
+                "server-side forwarding between servlets. Understanding servlets is key to "
+                "appreciating what Spring MVC abstracts away."
+            ),
+            "image_key": "java_servlets",
+            "links": [
+                (
+                    "https://jakarta.ee/specifications/servlet/6.0/",
+                    "Jakarta Servlet 6.0 Specification",
+                ),
+                (
+                    "https://www.baeldung.com/intro-to-servlets",
+                    "Baeldung: Introduction to Java Servlets",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(HttpSession|Cookie\b|req\.getCookies|res\.addCookie|session\.setAttribute|session\.getAttribute)",
+        {
+            "name": "Servlet Session Management & Cookies",
+            "explanation": (
+                "HTTP is stateless; `HttpSession` and `Cookie` are the two primary "
+                "mechanisms for maintaining state across requests. `HttpSession` stores "
+                "data server-side and tracks users via a `JSESSIONID` cookie. Cookies "
+                "store small key-value pairs on the client browser. Understanding these "
+                "primitives is essential before adopting Spring Session or Spring Security's "
+                "session management."
+            ),
+            "image_key": "servlet_sessions_cookies",
+            "links": [
+                (
+                    "https://jakarta.ee/specifications/servlet/6.0/",
+                    "Jakarta Servlet Specification — Sessions",
+                ),
+                (
+                    "https://www.baeldung.com/java-servlet-cookies-session",
+                    "Baeldung: Cookies and Session in Servlets",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(Inversion of Control|IoC|interface\b.*\bimplements\b|\bimplements\b.*Service)",
+        {
+            "name": "Inversion of Control (IoC) & Interface-based Design",
+            "explanation": (
+                "Inversion of Control is the core principle behind Spring's DI container. "
+                "Instead of a class creating its own dependencies, the framework injects "
+                "them. Programming to interfaces (e.g., a `PaymentService` interface with "
+                "multiple implementations) enables loose coupling: the consuming class "
+                "depends only on the contract, and the concrete implementation is selected "
+                "at runtime by the Spring container."
+            ),
+            "image_key": "ioc_interfaces",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-framework/docs/current/reference/html/"
+                    "core.html#beans-introduction",
+                    "Spring Core — IoC Container Introduction",
+                ),
+                (
+                    "https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring",
+                    "Baeldung: IoC and DI in Spring",
+                ),
+            ],
+        },
+    ),
 ]
 
 
@@ -580,20 +707,70 @@ def get_diff():
 
     Uses --unified=3 (three lines of context) to improve pattern-matching
     accuracy for multi-line constructs while keeping diff size manageable.
+    For merge commits, falls back to diffing against the first parent so that
+    the actual changes are visible rather than an empty diff.
     """
     try:
-        return _run(["git", "show", "HEAD", "--unified=3"])
+        diff = _run(["git", "show", "HEAD", "--unified=3"])
+        # Merge commits often produce an empty diff with git show; fall back
+        # to an explicit diff against the first parent.
+        if not _has_meaningful_diff(diff):
+            diff = _run(["git", "diff", "HEAD~1..HEAD", "--unified=3"])
+        return diff
     except subprocess.CalledProcessError:
         return ""
+
+
+def _has_meaningful_diff(diff_text):
+    """Return True if diff_text contains at least one added/removed line."""
+    for line in diff_text.splitlines():
+        if line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
+            return True
+    return False
+
+
+def get_changed_files_content():
+    """Return the full content of source files changed in the latest commit.
+
+    This allows the detector to find patterns in comments, imports, and
+    surrounding context that may not appear in the narrow diff window.
+    """
+    try:
+        files = _run(
+            ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", "HEAD"]
+        )
+        if not files:
+            # For merge commits, compare against the first parent.
+            files = _run(["git", "diff", "--name-only", "HEAD~1..HEAD"])
+    except subprocess.CalledProcessError:
+        return ""
+
+    contents = []
+    for filepath in files.splitlines():
+        filepath = filepath.strip()
+        if not filepath:
+            continue
+        try:
+            content = _run(["git", "show", f"HEAD:{filepath}"])
+            contents.append(content)
+        except subprocess.CalledProcessError:
+            # File may have been deleted in this commit.
+            continue
+    return "\n".join(contents)
 
 
 # ---------------------------------------------------------------------------
 # Concept detection
 # ---------------------------------------------------------------------------
 
-def detect_concepts(diff_text, commit_message):
-    """Return a list of concept dicts whose patterns match the diff or commit message."""
-    combined = diff_text + "\n" + commit_message
+def detect_concepts(diff_text, commit_message, changed_files_content=""):
+    """Return a list of concept dicts whose patterns match the diff, commit message, or changed file contents.
+
+    Scanning the full content of changed files (not just the diff) ensures
+    that patterns inside code comments, imports, and surrounding context are
+    detected even when they fall outside the narrow diff window.
+    """
+    combined = diff_text + "\n" + commit_message + "\n" + changed_files_content
     detected = []
     seen = set()
     for pattern, concept in CONCEPT_REGISTRY:
@@ -694,12 +871,17 @@ def main():
 
     sha, short_sha, message, author, date = get_commit_info()
     diff = get_diff()
-    concepts = detect_concepts(diff, message)
+    changed_content = get_changed_files_content()
+    concepts = detect_concepts(diff, message, changed_content)
     entry = generate_entry(short_sha, message, author, date, concepts)
     _append_entry(entry)
 
     total = _count_existing_entries()
     print(f"Knowledge Pool entry #{total} appended for commit {short_sha} — '{message}'.")
+    if concepts:
+        print(f"  Detected concepts: {', '.join(c['name'] for c in concepts)}")
+    else:
+        print("  No Spring/Java patterns detected in this commit.")
 
 
 if __name__ == "__main__":
