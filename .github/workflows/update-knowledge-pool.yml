@@ -3,7 +3,7 @@ name: Update Knowledge Pool
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   update-knowledge-pool:
