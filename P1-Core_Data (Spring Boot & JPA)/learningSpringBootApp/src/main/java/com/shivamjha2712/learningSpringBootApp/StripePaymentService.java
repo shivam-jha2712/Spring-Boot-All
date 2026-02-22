@@ -1,5 +1,6 @@
 package com.shivamjha2712.learningSpringBootApp;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 //import org.springframework.stereotype.Repository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 // They can also be used as alias for @Component as it works the same way for creation of Bean - and thus leading to IOC. (Inversion of Control)
 
 @Component
+@ConditionalOnProperty(name="payment.provider", havingValue = "stripe")
 public class StripePaymentService implements  PaymentService{
     @Override
     public String pay() {
