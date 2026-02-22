@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Analyze the latest git commit and append a learning entry to docs/Knowledge_Pool.md."""
+"""Analyze the latest git commit and append a learning entry to docs/Knowledge_Pool.md.
+
+The script scans three sources for every commit:
+  1. The unified diff (catches new / changed lines).
+  2. The full content of every file touched by the commit (catches comments,
+     imports, and surrounding context that fall outside the diff window).
+  3. The commit message itself.
+
+Patterns are matched against **two** registries:
+  • CONCEPT_REGISTRY  — code-level patterns (annotations, class names, APIs).
+  • GENERAL_CONCEPT_REGISTRY — comment-level / keyword patterns that detect
+    shorthand notes, questions, and explanations the author writes in comments
+    (e.g. "IOC?", "tight coupling", "auto-boxing").
+"""
 
 import subprocess
 import re
@@ -10,7 +23,7 @@ DOCS_DIR = "docs"
 KNOWLEDGE_POOL_FILE = os.path.join(DOCS_DIR, "Knowledge_Pool.md")
 
 # ---------------------------------------------------------------------------
-# Concept registry
+# Concept registry — CODE patterns (annotations, APIs, class names)
 # Each tuple: (regex_pattern, concept_dict)
 # concept_dict keys: name, explanation, image_key, links (list of (url, title))
 # ---------------------------------------------------------------------------
@@ -679,10 +692,650 @@ CONCEPT_REGISTRY = [
     ),
 ]
 
-
 # ---------------------------------------------------------------------------
-# Git helpers
+# General concept registry — COMMENT / KEYWORD patterns
+#
+# These patterns are intentionally broad and case-insensitive.  They match
+# shorthand notes, questions, and explanations that developers write in code
+# comments (e.g. "IOC?", "tight coupling", "auto-boxing", "OOP", "extends").
 # ---------------------------------------------------------------------------
+GENERAL_CONCEPT_REGISTRY = [
+    # ── OOP Fundamentals ────────────────────────────────────────────────
+    (
+        r"(?i)\b(OOP|object.oriented|encapsulat|abstraction|polymorphism)\b",
+        {
+            "name": "Object-Oriented Programming (OOP) Principles",
+            "explanation": (
+                "OOP organises code around **objects** — instances of classes that bundle "
+                "state (fields) and behaviour (methods). The four pillars are:\n\n"
+                "• **Encapsulation** — hiding internal state behind access modifiers and "
+                "exposing behaviour through public methods.\n"
+                "• **Abstraction** — modelling real-world entities at the right level of "
+                "detail, exposing only what matters to the caller.\n"
+                "• **Inheritance** — sharing behaviour via parent–child class hierarchies "
+                "(`extends`).\n"
+                "• **Polymorphism** — one interface, many implementations; a reference "
+                "of the parent type can point to any child object, and the correct "
+                "method is resolved at runtime (dynamic dispatch)."
+            ),
+            "image_key": "oop_principles",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/concepts/",
+                    "Oracle Java Tutorials — OOP Concepts",
+                ),
+                (
+                    "https://www.baeldung.com/java-oop",
+                    "Baeldung: OOP Concepts in Java",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(inherit|extends\b|super\b|parent.class|child.class)\b",
+        {
+            "name": "Java Inheritance & the `extends` Keyword",
+            "explanation": (
+                "Inheritance lets a **child class** (`extends`) reuse and specialise the "
+                "fields and methods of a **parent class**. The child inherits all "
+                "non-private members and can override methods to provide its own "
+                "implementation. `super` refers to the parent instance — used to call "
+                "the parent constructor or an overridden method. Java supports single "
+                "class inheritance but multiple interface implementation."
+            ),
+            "image_key": "java_inheritance",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/IandI/subclasses.html",
+                    "Oracle Java Tutorials — Inheritance",
+                ),
+                (
+                    "https://www.baeldung.com/java-inheritance",
+                    "Baeldung: Guide to Inheritance in Java",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(interface\b|implements\b|abstract\s+(class|method)|default\s+method)",
+        {
+            "name": "Java Interfaces & Abstract Classes",
+            "explanation": (
+                "An **interface** defines a contract — method signatures without "
+                "implementation (plus `default` methods since Java 8). A class "
+                "`implements` one or more interfaces, promising to provide the method "
+                "bodies. An **abstract class** sits between a concrete class and an "
+                "interface: it can hold state and concrete methods but cannot be "
+                "instantiated. Use interfaces for capability contracts and abstract "
+                "classes for shared base behaviour."
+            ),
+            "image_key": "interfaces_abstract",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html",
+                    "Oracle Java Tutorials — Interfaces",
+                ),
+                (
+                    "https://www.baeldung.com/java-interface-vs-abstract-class",
+                    "Baeldung: Interface vs Abstract Class",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(@Override|method.overrid|overrid)",
+        {
+            "name": "Method Overriding in Java",
+            "explanation": (
+                "When a subclass provides its own version of a method already defined in "
+                "its parent, it **overrides** that method. The `@Override` annotation is "
+                "optional but strongly recommended — the compiler will flag an error if the "
+                "annotated method does not actually override a superclass method, catching "
+                "typos and signature mismatches early. At runtime, the JVM uses dynamic "
+                "dispatch to call the overridden version."
+            ),
+            "image_key": "method_overriding",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/IandI/override.html",
+                    "Oracle Java Tutorials — Overriding Methods",
+                ),
+                (
+                    "https://www.baeldung.com/java-method-overriding",
+                    "Baeldung: Method Overriding in Java",
+                ),
+            ],
+        },
+    ),
+    # ── Coupling & Design ───────────────────────────────────────────────
+    (
+        r"(?i)\b(tight.coupling|loose.coupling|loosely.coupled|tightly.coupled|decoupl)\b",
+        {
+            "name": "Tight vs Loose Coupling",
+            "explanation": (
+                "**Tight coupling** means a class directly creates or depends on a concrete "
+                "implementation (e.g., `new RazorpayPaymentService()`). Changing the "
+                "dependency forces changes in the consumer. **Loose coupling** means the "
+                "consumer depends on an *abstraction* (interface), and the concrete "
+                "implementation is supplied externally — typically via dependency injection. "
+                "Loose coupling improves testability, swappability, and maintainability."
+            ),
+            "image_key": "coupling",
+            "links": [
+                (
+                    "https://www.baeldung.com/java-coupling-classes-tight-loose",
+                    "Baeldung: Tight and Loose Coupling in Java",
+                ),
+                (
+                    "https://en.wikipedia.org/wiki/Coupling_(computer_programming)",
+                    "Wikipedia: Coupling (Computer Programming)",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(strategy.pattern|switch.*implementation|swap.*implementation|multiple.implementation)",
+        {
+            "name": "Strategy Design Pattern",
+            "explanation": (
+                "The Strategy pattern defines a family of interchangeable algorithms "
+                "behind a common interface. The client depends only on the interface; the "
+                "concrete strategy is selected at configuration or runtime. In Spring this "
+                "maps naturally to an interface with multiple `@Component` implementations, "
+                "selected via `@ConditionalOnProperty`, `@Qualifier`, or profiles."
+            ),
+            "image_key": "strategy_pattern",
+            "links": [
+                (
+                    "https://refactoring.guru/design-patterns/strategy",
+                    "Refactoring Guru: Strategy Pattern",
+                ),
+                (
+                    "https://www.baeldung.com/java-strategy-pattern",
+                    "Baeldung: Strategy Pattern in Java",
+                ),
+            ],
+        },
+    ),
+    # ── Spring / DI keywords in comments ────────────────────────────────
+    (
+        r"(?i)\bIOC\b|\binversion.of.control\b",
+        {
+            "name": "Inversion of Control (IoC)",
+            "explanation": (
+                "**IoC** flips the traditional flow of control: instead of *your* code "
+                "creating dependencies, a **container** (the Spring `ApplicationContext`) "
+                "creates them and *injects* them into your objects. This is the foundational "
+                "principle behind Spring's dependency injection. Your classes declare "
+                "*what* they need (via constructor parameters, `@Autowired`, or "
+                "`@Inject`); the container decides *how* and *when* to fulfil those needs."
+            ),
+            "image_key": "ioc",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-framework/docs/current/reference/html/"
+                    "core.html#beans-introduction",
+                    "Spring Core — IoC Container",
+                ),
+                (
+                    "https://martinfowler.com/bliki/InversionOfControl.html",
+                    "Martin Fowler: Inversion of Control",
+                ),
+                (
+                    "https://www.baeldung.com/inversion-control-and-dependency-injection-in-spring",
+                    "Baeldung: IoC and DI in Spring",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(bean\b|spring.bean|bean.class|creation.of.bean|bean.*instantiat)",
+        {
+            "name": "Spring Beans & the Bean Lifecycle",
+            "explanation": (
+                "A **bean** is any object managed by the Spring IoC container. Beans are "
+                "created (instantiated), configured (dependencies injected), initialised "
+                "(`@PostConstruct`), and eventually destroyed (`@PreDestroy`). By default "
+                "beans are **singletons** — one instance per application context. Marking a "
+                "class with `@Component`, `@Service`, `@Repository`, or defining it in a "
+                "`@Configuration` class registers it as a bean."
+            ),
+            "image_key": "spring_beans",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-framework/docs/current/reference/html/"
+                    "core.html#beans-definition",
+                    "Spring Core — Bean Overview",
+                ),
+                (
+                    "https://www.baeldung.com/spring-bean",
+                    "Baeldung: What is a Spring Bean?",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(component.scan|class.?path.scan|auto.?detect)",
+        {
+            "name": "Spring Component Scanning",
+            "explanation": (
+                "Component scanning is the mechanism by which Spring automatically "
+                "discovers classes annotated with `@Component` (and its stereotypes "
+                "`@Service`, `@Repository`, `@Controller`) on the classpath and registers "
+                "them as beans. `@SpringBootApplication` implicitly enables scanning from "
+                "the package it lives in downward, so any annotated class in a sub-package "
+                "is automatically picked up."
+            ),
+            "image_key": "component_scanning",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-framework/docs/current/reference/html/"
+                    "core.html#beans-classpath-scanning",
+                    "Spring Core — Classpath Scanning",
+                ),
+                (
+                    "https://www.baeldung.com/spring-component-scanning",
+                    "Baeldung: Spring Component Scanning",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(field.injection|constructor.injection|setter.injection|constructor.DI|field.DI)\b",
+        {
+            "name": "Dependency Injection Styles: Constructor vs Field vs Setter",
+            "explanation": (
+                "Spring supports three injection styles:\n\n"
+                "• **Constructor injection** (recommended) — dependencies are passed via "
+                "the constructor; fields can be `final`, making the object immutable and "
+                "easy to test.\n"
+                "• **Setter injection** — dependencies are set via public setter methods "
+                "after construction.\n"
+                "• **Field injection** (`@Autowired` on a field) — convenient but "
+                "prevents `final` fields, hides dependencies from the public API, and "
+                "makes unit testing harder without a DI container.\n\n"
+                "The Spring team officially recommends constructor injection."
+            ),
+            "image_key": "di_styles",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-framework/docs/current/reference/html/"
+                    "core.html#beans-setter-injection",
+                    "Spring Core — Setter-based DI",
+                ),
+                (
+                    "https://www.baeldung.com/constructor-injection-in-spring",
+                    "Baeldung: Constructor Injection in Spring",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(application.?context|ApplicationContext)\b",
+        {
+            "name": "Spring ApplicationContext",
+            "explanation": (
+                "The `ApplicationContext` is the central interface of the Spring IoC "
+                "container. It loads bean definitions, wires dependencies, manages the "
+                "bean lifecycle, and publishes application events. "
+                "`SpringApplication.run(...)` in a Spring Boot app creates and refreshes "
+                "an `ApplicationContext`, making all declared beans available for injection."
+            ),
+            "image_key": "application_context",
+            "links": [
+                (
+                    "https://docs.spring.io/spring-framework/docs/current/reference/html/"
+                    "core.html#context-introduction",
+                    "Spring Core — ApplicationContext",
+                ),
+                (
+                    "https://www.baeldung.com/spring-application-context",
+                    "Baeldung: ApplicationContext in Spring",
+                ),
+            ],
+        },
+    ),
+    # ── Java fundamentals (operators, casting, strings, loops) ──────────
+    (
+        r"(?i)\b(auto.?box|unbox|wrapper.class|Integer\b|Double\b|Boolean\b)\b",
+        {
+            "name": "Java Auto-boxing & Unboxing",
+            "explanation": (
+                "Auto-boxing is the automatic conversion from a primitive (`int`, "
+                "`double`, `boolean`) to its wrapper class (`Integer`, `Double`, "
+                "`Boolean`). Unboxing is the reverse. The compiler inserts `valueOf()` / "
+                "`intValue()` calls behind the scenes. While convenient, excessive "
+                "auto-boxing in hot loops can cause unnecessary object creation and GC "
+                "pressure."
+            ),
+            "image_key": "autoboxing",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/data/autoboxing.html",
+                    "Oracle Java Tutorials — Autoboxing and Unboxing",
+                ),
+                (
+                    "https://www.baeldung.com/java-wrapper-classes",
+                    "Baeldung: Java Wrapper Classes",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(type.?cast|explicit.cast|narrow.conver|widen.conver|\(int\)\s|\(double\)\s)",
+        {
+            "name": "Java Type Casting",
+            "explanation": (
+                "Java supports two kinds of type conversion:\n\n"
+                "• **Widening (implicit)** — smaller type → larger type (`int` → `double`) "
+                "— no data loss, done automatically.\n"
+                "• **Narrowing (explicit)** — larger type → smaller type (`double` → `int`) "
+                "— may lose precision, requires a cast operator `(int) d`.\n\n"
+                "Casts between reference types follow the class hierarchy and may throw "
+                "`ClassCastException` at runtime if the object is not actually an instance "
+                "of the target type."
+            ),
+            "image_key": "type_casting",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/specs/jls/se17/html/jls-5.html",
+                    "Java Language Spec — Conversions and Contexts",
+                ),
+                (
+                    "https://www.baeldung.com/java-type-casting",
+                    "Baeldung: Java Type Casting",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(for.loop|while.loop|do.while|loop.iteration|for\s*\(|while\s*\()",
+        {
+            "name": "Java Loop Constructs",
+            "explanation": (
+                "Java provides three core loop constructs:\n\n"
+                "• **`for` loop** — best when the number of iterations is known "
+                "(`for (int i = 0; i < n; i++)`).\n"
+                "• **`while` loop** — evaluates the condition before each iteration; "
+                "body may execute zero times.\n"
+                "• **`do-while` loop** — evaluates the condition *after* each iteration; "
+                "body always executes at least once.\n\n"
+                "Java 5 added the **enhanced for-each** (`for (T item : collection)`) "
+                "for iterating over arrays and `Iterable` types."
+            ),
+            "image_key": "java_loops",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/for.html",
+                    "Oracle Java Tutorials — The for Statement",
+                ),
+                (
+                    "https://www.baeldung.com/java-loops",
+                    "Baeldung: Loops in Java",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(operator|arithmetic|relational|logical|bitwise|ternary|modulus|precedence)\b",
+        {
+            "name": "Java Operators & Operator Precedence",
+            "explanation": (
+                "Java operators fall into several families:\n\n"
+                "• **Arithmetic** — `+ - * / %` (modulus)\n"
+                "• **Relational** — `== != > < >= <=`\n"
+                "• **Logical** — `&& || !`\n"
+                "• **Bitwise** — `& | ^ ~ << >>`\n"
+                "• **Ternary** — `condition ? a : b`\n"
+                "• **Assignment** — `= += -= *= /= %=`\n\n"
+                "**Precedence** determines evaluation order when an expression mixes "
+                "operators (e.g., `*` before `+`). Parentheses override default precedence."
+            ),
+            "image_key": "java_operators",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/operators.html",
+                    "Oracle Java Tutorials — Operators",
+                ),
+                (
+                    "https://www.baeldung.com/java-operators",
+                    "Baeldung: Java Operators",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(constructor\b|new\s+\w+\s*\(|this\s*\(|object.creation|instantiat)",
+        {
+            "name": "Java Constructors & Object Creation",
+            "explanation": (
+                "A **constructor** is a special method invoked via `new ClassName(...)` to "
+                "initialise a newly allocated object. If no constructor is defined, Java "
+                "provides a default no-arg constructor. Constructors can be overloaded, and "
+                "`this(...)` chains one constructor to another within the same class. "
+                "In Spring, the container calls the constructor when creating a bean, "
+                "injecting dependencies as constructor arguments."
+            ),
+            "image_key": "java_constructors",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/javaOO/constructors.html",
+                    "Oracle Java Tutorials — Constructors",
+                ),
+                (
+                    "https://www.baeldung.com/java-constructors",
+                    "Baeldung: Java Constructors",
+                ),
+            ],
+        },
+    ),
+    # ── Web / Servlet concepts from comments ────────────────────────────
+    (
+        r"(?i)\b(request.?dispatch|forward|server.side.forward)\b",
+        {
+            "name": "Servlet Request Forwarding (RequestDispatcher)",
+            "explanation": (
+                "`RequestDispatcher.forward(req, res)` transfers control from one servlet "
+                "to another **entirely on the server side** — the browser URL does *not* "
+                "change. The original request and response objects are shared, so data "
+                "attached via `req.setAttribute()` is available to the target servlet. "
+                "This is the preferred approach when you want to delegate processing "
+                "without an extra HTTP round-trip."
+            ),
+            "image_key": "request_forwarding",
+            "links": [
+                (
+                    "https://jakarta.ee/specifications/servlet/6.0/",
+                    "Jakarta Servlet — RequestDispatcher",
+                ),
+                (
+                    "https://www.baeldung.com/servlet-redirect-forward",
+                    "Baeldung: Redirect vs Forward in Servlets",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(sendRedirect|URL.?rewrit|redirect.*client|client.side.redirect)\b",
+        {
+            "name": "HTTP Redirect & URL Rewriting",
+            "explanation": (
+                "`res.sendRedirect(url)` sends an HTTP 302 response telling the browser "
+                "to make a **new request** to a different URL. The browser address bar "
+                "updates. Data can be passed by appending query parameters to the URL "
+                "(URL rewriting), but this exposes values in the address bar. Redirects "
+                "are useful after POST operations (Post-Redirect-Get pattern) to prevent "
+                "duplicate form submissions."
+            ),
+            "image_key": "http_redirect",
+            "links": [
+                (
+                    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections",
+                    "MDN: HTTP Redirections",
+                ),
+                (
+                    "https://www.baeldung.com/servlet-redirect-forward",
+                    "Baeldung: Redirect vs Forward in Servlets",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(access.modif|public\b|private\b|protected\b|default.access)",
+        {
+            "name": "Java Access Modifiers",
+            "explanation": (
+                "Access modifiers control visibility of classes, fields, and methods:\n\n"
+                "• **`public`** — accessible from everywhere.\n"
+                "• **`protected`** — accessible within the same package and subclasses.\n"
+                "• *default (package-private)* — accessible only within the same package.\n"
+                "• **`private`** — accessible only within the declaring class.\n\n"
+                "In interfaces, methods are `public` by default. Choosing the right "
+                "modifier enforces encapsulation and limits the API surface."
+            ),
+            "image_key": "access_modifiers",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/javaOO/accesscontrol.html",
+                    "Oracle Java Tutorials — Controlling Access",
+                ),
+                (
+                    "https://www.baeldung.com/java-access-modifiers",
+                    "Baeldung: Java Access Modifiers",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(static\b|static.method|static.field|class.level)",
+        {
+            "name": "Java `static` Keyword",
+            "explanation": (
+                "The `static` modifier means the member belongs to the **class** rather "
+                "than to any instance. Static fields are shared across all instances; "
+                "static methods can be called without creating an object. `main(String[])` "
+                "is static because the JVM needs an entry point before any object exists. "
+                "A common pitfall: static methods cannot access instance fields or call "
+                "instance methods directly."
+            ),
+            "image_key": "java_static",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/javaOO/classvars.html",
+                    "Oracle Java Tutorials — Class Variables",
+                ),
+                (
+                    "https://www.baeldung.com/java-static",
+                    "Baeldung: The static Keyword in Java",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(final\b|immutable|cannot.be.changed|constant)\b",
+        {
+            "name": "Java `final` Keyword & Immutability",
+            "explanation": (
+                "The `final` keyword prevents reassignment:\n\n"
+                "• **`final` variable** — value cannot be changed after initialisation; "
+                "combined with constructor injection this ensures dependencies are immutable.\n"
+                "• **`final` method** — cannot be overridden by subclasses.\n"
+                "• **`final` class** — cannot be extended (`String` is `final`).\n\n"
+                "In Spring, constructor-injected fields are typically `final`, "
+                "guaranteeing the dependency is never accidentally replaced."
+            ),
+            "image_key": "java_final",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/IandI/final.html",
+                    "Oracle Java Tutorials — The final Keyword",
+                ),
+                (
+                    "https://www.baeldung.com/java-final",
+                    "Baeldung: The final Keyword in Java",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(PrintWriter|getWriter|response.body|write.*browser|output.*client)",
+        {
+            "name": "Writing HTTP Responses with PrintWriter",
+            "explanation": (
+                "`HttpServletResponse.getWriter()` returns a `PrintWriter` that streams "
+                "character data back to the client's browser. Calling `out.println(...)` "
+                "writes directly to the HTTP response body. In modern Spring MVC, "
+                "`@ResponseBody` and `@RestController` abstract this away, but "
+                "understanding the raw mechanism clarifies how controllers ultimately "
+                "send data to the user."
+            ),
+            "image_key": "printwriter_response",
+            "links": [
+                (
+                    "https://jakarta.ee/specifications/servlet/6.0/",
+                    "Jakarta Servlet — HttpServletResponse",
+                ),
+                (
+                    "https://www.baeldung.com/java-printwriter",
+                    "Baeldung: Guide to PrintWriter",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(string.concat|StringBuilder|StringBuffer|immutable.string|\+\s*\")",
+        {
+            "name": "Java String Handling & Concatenation",
+            "explanation": (
+                "Java `String` objects are **immutable** — every concatenation with `+` "
+                "creates a new `String` behind the scenes. For a small number of "
+                "concatenations the compiler optimises via `StringBuilder`, but in loops "
+                "you should use `StringBuilder` explicitly to avoid O(n²) copying. "
+                "`StringBuffer` is the thread-safe (synchronised) variant, rarely needed "
+                "in modern code."
+            ),
+            "image_key": "java_strings",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/data/strings.html",
+                    "Oracle Java Tutorials — Strings",
+                ),
+                (
+                    "https://www.baeldung.com/java-string-builder-string-buffer",
+                    "Baeldung: StringBuilder vs StringBuffer",
+                ),
+            ],
+        },
+    ),
+    (
+        r"(?i)\b(data.?types?|primitiv|int\b|double\b|float\b|char\b|long\b|boolean\b|byte\b|short\b)",
+        {
+            "name": "Java Primitive Data Types",
+            "explanation": (
+                "Java has eight primitive types:\n\n"
+                "• **Integers:** `byte` (8-bit), `short` (16-bit), `int` (32-bit), "
+                "`long` (64-bit)\n"
+                "• **Floating-point:** `float` (32-bit), `double` (64-bit)\n"
+                "• **Character:** `char` (16-bit Unicode)\n"
+                "• **Boolean:** `boolean` (`true`/`false`)\n\n"
+                "Primitives are stored on the stack (or inlined) and are much faster "
+                "than their wrapper counterparts. Literal suffixes like `f`, `L`, `d` "
+                "disambiguate types."
+            ),
+            "image_key": "java_primitives",
+            "links": [
+                (
+                    "https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html",
+                    "Oracle Java Tutorials — Primitive Data Types",
+                ),
+                (
+                    "https://www.baeldung.com/java-primitives",
+                    "Baeldung: Java Primitive Types",
+                ),
+            ],
+        },
+    ),
+]
 
 def _run(cmd):
     """Run a shell command and return its stdout as a stripped string.
@@ -763,20 +1416,49 @@ def get_changed_files_content():
 # Concept detection
 # ---------------------------------------------------------------------------
 
-def detect_concepts(diff_text, commit_message, changed_files_content=""):
-    """Return a list of concept dicts whose patterns match the diff, commit message, or changed file contents.
+def _extract_comments(text):
+    """Extract single-line (//) and block (/* */) comments from source text.
 
-    Scanning the full content of changed files (not just the diff) ensures
-    that patterns inside code comments, imports, and surrounding context are
-    detected even when they fall outside the narrow diff window.
+    This dedicated extraction ensures that shorthand notes like "IOC?" or
+    "tight coupling" written inside comments are matched by the general
+    concept registry even when the surrounding code does not contain a
+    recognisable annotation or API call.
+    """
+    comments = []
+    # Single-line comments
+    comments.extend(re.findall(r"//[^\n]*", text))
+    # Block comments (non-greedy)
+    comments.extend(re.findall(r"/\*.*?\*/", text, re.DOTALL))
+    return "\n".join(comments)
+
+
+def detect_concepts(diff_text, commit_message, changed_files_content=""):
+    """Return a list of concept dicts found in the diff, commit message, or changed files.
+
+    Detection happens in two passes:
+      1. **Code patterns** (CONCEPT_REGISTRY) — matched against the full
+         combined text (diff + file contents + commit message).
+      2. **Comment / keyword patterns** (GENERAL_CONCEPT_REGISTRY) — matched
+         against the same combined text so that shorthand notes, questions,
+         and explanations in code comments are detected.
     """
     combined = diff_text + "\n" + commit_message + "\n" + changed_files_content
     detected = []
     seen = set()
+
+    # Pass 1: code-level patterns
     for pattern, concept in CONCEPT_REGISTRY:
         if re.search(pattern, combined) and concept["name"] not in seen:
             detected.append(concept)
             seen.add(concept["name"])
+
+    # Pass 2: comment / keyword patterns (scanned against full text so that
+    # both code and comments are covered)
+    for pattern, concept in GENERAL_CONCEPT_REGISTRY:
+        if re.search(pattern, combined) and concept["name"] not in seen:
+            detected.append(concept)
+            seen.add(concept["name"])
+
     return detected
 
 
@@ -819,11 +1501,6 @@ def generate_entry(short_sha, message, author, date, concepts):
                 f"#### {concept['name']}",
                 "",
                 concept["explanation"],
-                "",
-                (
-                    f'<img src="assets/{concept["image_key"]}.png" '
-                    f'alt="{concept["name"]} diagram" width="600"/>'
-                ),
                 "",
                 "**References:**",
             ]
