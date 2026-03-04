@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Analyze the latest git commit and append a learning entry to docs/Knowledge_Pool.md.
 
-The script scans three sources for every commit:
-  1. The unified diff (catches new / changed lines).
-  2. The full content of every file touched by the commit (catches comments,
-     imports, and surrounding context that fall outside the diff window).
-  3. The commit message itself.
+The script scans two sources for every commit:
+  1. The **added lines** from the unified diff (only lines starting with ``+``),
+     so that only genuinely new content is considered — not pre-existing code.
+  2. The commit message itself.
 
 Patterns are matched against **two** registries:
   • CONCEPT_REGISTRY  — code-level patterns (annotations, class names, APIs).
@@ -1382,34 +1381,19 @@ def _has_meaningful_diff(diff_text):
     return False
 
 
-def get_changed_files_content():
-    """Return the full content of source files changed in the latest commit.
+def _extract_added_lines(diff_text):
+    """Return only the added lines from a unified diff.
 
-    This allows the detector to find patterns in comments, imports, and
-    surrounding context that may not appear in the narrow diff window.
+    Lines starting with ``+`` (but not ``+++``) represent content that is
+    genuinely new in this commit.  Extracting only these lines ensures that
+    concept detection is limited to what was actually introduced, rather than
+    the entire file contents.
     """
-    try:
-        files = _run(
-            ["git", "diff-tree", "--no-commit-id", "-r", "--name-only", "HEAD"]
-        )
-        if not files:
-            # For merge commits, compare against the first parent.
-            files = _run(["git", "diff", "--name-only", "HEAD~1..HEAD"])
-    except subprocess.CalledProcessError:
-        return ""
-
-    contents = []
-    for filepath in files.splitlines():
-        filepath = filepath.strip()
-        if not filepath:
-            continue
-        try:
-            content = _run(["git", "show", f"HEAD:{filepath}"])
-            contents.append(content)
-        except subprocess.CalledProcessError:
-            # File may have been deleted in this commit.
-            continue
-    return "\n".join(contents)
+    added = []
+    for line in diff_text.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            added.append(line[1:])  # strip the leading '+'
+    return "\n".join(added)
 
 
 # ---------------------------------------------------------------------------
@@ -1432,17 +1416,20 @@ def _extract_comments(text):
     return "\n".join(comments)
 
 
-def detect_concepts(diff_text, commit_message, changed_files_content=""):
-    """Return a list of concept dicts found in the diff, commit message, or changed files.
+def detect_concepts(diff_text, commit_message):
+    """Return a list of concept dicts found in the diff's added lines and commit message.
 
-    Detection happens in two passes:
-      1. **Code patterns** (CONCEPT_REGISTRY) — matched against the full
-         combined text (diff + file contents + commit message).
+    Only the **added lines** (``+`` lines) from the diff are scanned so that
+    concepts already present in the codebase are not re-reported.  Detection
+    happens in two passes:
+      1. **Code patterns** (CONCEPT_REGISTRY) — matched against added lines
+         and the commit message.
       2. **Comment / keyword patterns** (GENERAL_CONCEPT_REGISTRY) — matched
-         against the same combined text so that shorthand notes, questions,
-         and explanations in code comments are detected.
+         against the same text so that shorthand notes, questions, and
+         explanations in code comments are detected.
     """
-    combined = diff_text + "\n" + commit_message + "\n" + changed_files_content
+    added_lines = _extract_added_lines(diff_text)
+    combined = added_lines + "\n" + commit_message
     detected = []
     seen = set()
 
@@ -1548,8 +1535,7 @@ def main():
 
     sha, short_sha, message, author, date = get_commit_info()
     diff = get_diff()
-    changed_content = get_changed_files_content()
-    concepts = detect_concepts(diff, message, changed_content)
+    concepts = detect_concepts(diff, message)
     entry = generate_entry(short_sha, message, author, date, concepts)
     _append_entry(entry)
 
