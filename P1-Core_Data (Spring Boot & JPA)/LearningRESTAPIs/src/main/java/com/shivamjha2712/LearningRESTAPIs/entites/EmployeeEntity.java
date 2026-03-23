@@ -1,6 +1,10 @@
 package com.shivamjha2712.LearningRESTAPIs.entites;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
@@ -10,8 +14,13 @@ import java.time.LocalDate;
  * Whereas the DTO is used to mark how the data will be sent to the client and how it will be received from the client.
  * Thus, the Entity is used for Database and DTO is used for Client.
  */
+@Getter // This is done using the Lombok dependency.
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Table(name = "employees")
 public class EmployeeEntity {
+
 
     @Id // This is going to determine what is going to be a primary key inside any entity.
     @GeneratedValue(strategy = GenerationType.AUTO)

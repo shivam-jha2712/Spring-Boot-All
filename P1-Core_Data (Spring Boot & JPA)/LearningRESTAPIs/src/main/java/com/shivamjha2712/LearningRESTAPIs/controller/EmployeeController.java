@@ -1,9 +1,10 @@
 package com.shivamjha2712.LearningRESTAPIs.controller;
 
 import com.shivamjha2712.LearningRESTAPIs.dto.EmployeeDto;
+import com.shivamjha2712.LearningRESTAPIs.service.EmployeeService;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.util.List;
 
 @RequestMapping(path = "/getEmployee")
 // This could also be used solely as the parent context which could be used as the main endpoint of url path.
@@ -19,18 +20,33 @@ public class EmployeeController {
 //        return "Employee Name : Shivam Jha";
 //    }
 
+
+    /**
+     * We can even make the conversion of Employee Entity to Employee DTO so that the modularity and seperation betweeen bothe presentation and persistance layer will remain intact.
+     */
+
+    private final EmployeeService employeeService; // The usage of service layer in controller has stripped off the usage of employee repository here.
+
+    public EmployeeController(EmployeeService employeeService) {
+        this.employeeService = employeeService;
+    }
+
+    /**
+     * After the use of ModelMapper we can ditch the usage of EmployeeEntity directly as a return type and use EmployeeDto as the return type and thus we can get the correlation between both entity and DTO as well.
+     *
+     */
     //  @GetMapping(path = "/getEmployee/{employeeId}") - This was used when @RequestMapping was not used.
     @GetMapping(path = "/{employeeId}")
-    public EmployeeDto getEmployeeById(@PathVariable Long employeeId) {
-        return new EmployeeDto(employeeId, "Shivam", "shivam@gmail.com", 24, LocalDate.of(2020, 1, 1), true);
+    public EmployeeDto getEmployeeById(@PathVariable("employeeId") Long id) {
+        return employeeService.getEmployeeById(id);
     }
 
     //  @GetMapping(path = "/getEmployee") // And this was used when the @RequestMapping was not being used.
     @GetMapping
     // This does not need a path as the /getEmployee is the parent path and is provided under @RequestMapping annotations.
-    public String getAllEmployees(@RequestParam(required = false, name = "inputAge") Integer age,
-                                  @RequestParam(required = false) String sortBy) {
-        return "Hi age " + age + " " + sortBy;
+    public List<EmployeeDto> getAllEmployees(@RequestParam(required = false, name = "inputAge") Integer age,
+                                             @RequestParam(required = false) String sortBy) {
+        return employeeService.getAllEmployees();
     }
 
     /**
@@ -50,8 +66,9 @@ public class EmployeeController {
 
     @PostMapping(path = "/addEmployee")
     public EmployeeDto createEmployee(@RequestBody EmployeeDto inputEmployee) {
-        inputEmployee.setId(100L);
-        return inputEmployee;
+        // This can also have logic to check if this can be performed only by the admin that could be something that needs to be checked.
+        // To log details associated with this method can also be added here as well.
+        return employeeService.createEmployee(inputEmployee);
     }
 
     @PutMapping
