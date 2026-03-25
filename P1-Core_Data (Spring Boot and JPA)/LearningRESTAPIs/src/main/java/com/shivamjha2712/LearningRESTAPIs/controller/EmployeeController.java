@@ -91,7 +91,7 @@ return "Employee Name : Shivam Jha";
         boolean gotDeleted = employeeService.deleteEmployeeById(employeeId); // This is going to call simply the function for deleting the employee whose Id is mentioned.
         // and the validation using boolean flag is also done over here.
         if (gotDeleted) {
-            ResponseEntity.ok(true);
+            ResponseEntity.ok(true); // Checks associated to Deletion using ResponseEntity
         }
         return ResponseEntity.notFound().build();
     }
