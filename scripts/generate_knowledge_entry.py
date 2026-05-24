@@ -20,6 +20,7 @@ from datetime import datetime
 
 DOCS_DIR = "docs"
 KNOWLEDGE_POOL_FILE = os.path.join(DOCS_DIR, "Knowledge_Pool.md")
+KNOWLEDGE_POOL_NOTES_FILE = os.path.join(DOCS_DIR, "Knowledge_Pool_Notes.txt")
 
 # ---------------------------------------------------------------------------
 # Concept registry — CODE patterns (annotations, APIs, class names)
@@ -1498,6 +1499,174 @@ def generate_entry(short_sha, message, author, date, concepts):
     return "\n".join(lines)
 
 
+def _count_existing_note_entries():
+    if not os.path.exists(KNOWLEDGE_POOL_NOTES_FILE):
+        return 0
+    with open(KNOWLEDGE_POOL_NOTES_FILE, "r", encoding="utf-8") as fh:
+        return len(re.findall(r"^Entry #\d+ \|", fh.read(), re.MULTILINE))
+
+
+def _extract_added_code_by_file(diff_text):
+    file_code_map = {}
+    current_file = None
+
+    for raw_line in diff_text.splitlines():
+        line = raw_line.rstrip("\n")
+        if line.startswith("diff --git "):
+            parts = line.split(" ")
+            if len(parts) >= 4 and parts[3].startswith("b/"):
+                current_file = parts[3][2:]
+            else:
+                current_file = None
+            continue
+        if line.startswith("+++ "):
+            if line.startswith("+++ b/"):
+                current_file = line[6:]
+            elif line == "+++ /dev/null":
+                current_file = None
+            continue
+        if line.startswith("@@"):
+            continue
+        if line.startswith("+") and not line.startswith("+++"):
+            added_line = line[1:]
+            if current_file and added_line.strip():
+                file_code_map.setdefault(current_file, []).append(added_line)
+
+    return file_code_map
+
+
+def _build_new_additions_summary(file_code_map):
+    if not file_code_map:
+        return [
+            "- Is commit me koi clear added code line detect nahi hui (ya diff empty tha)."
+        ]
+
+    total_added = sum(len(lines) for lines in file_code_map.values())
+    summary = [
+        f"- Total `{total_added}` added lines detect hui across `{len(file_code_map)}` file(s).",
+        "- Naya add hua (sample):",
+    ]
+
+    sample_count = 0
+    for file_path, lines in file_code_map.items():
+        for line in lines:
+            snippet = " ".join(line.strip().split())
+            if not snippet:
+                continue
+            if len(snippet) > 140:
+                snippet = snippet[:137] + "..."
+            summary.append(f"  - `{file_path}`: {snippet}")
+            sample_count += 1
+            if sample_count >= 5:
+                break
+        if sample_count >= 5:
+            break
+
+    if sample_count == 0:
+        summary.append("  - Added lines mostly blank/context thi, readable sample nahi mila.")
+    return summary
+
+
+def _infer_reason_hinglish(message, file_code_map):
+    normalized = (message or "").strip()
+    lower_msg = normalized.lower()
+    likely_unclear = (
+        not normalized
+        or lower_msg.startswith("merge ")
+        or "update knowledge pool" in lower_msg
+        or lower_msg.startswith("docs:")
+    )
+
+    if likely_unclear:
+        return f'Reason clear nahi hai. Commit message: "{normalized or "N/A"}".'
+
+    touched_files = ", ".join(list(file_code_map.keys())[:3])
+    if len(file_code_map) > 3:
+        touched_files += ", ..."
+    if touched_files:
+        return (
+            f'Commit message "{normalized}" se lagta hai ki yeh change `{touched_files}` '
+            "me naya content/documentation/concepts add ya refine karne ke liye kiya gaya."
+        )
+    return (
+        f'Commit message "{normalized}" se intent dikhta hai, '
+        "but exact implementation reason fully explicit nahi hai."
+    )
+
+
+def _build_reflection_hinglish(concepts, file_code_map):
+    if concepts:
+        concept_names = ", ".join(concept["name"] for concept in concepts[:3])
+        if len(concepts) > 3:
+            concept_names += ", ..."
+        return (
+            f"Takeaway: Is commit se `{concept_names}` jaise concepts practical context me "
+            "samajhne ko mile. Small incremental examples se understanding strong hoti hai."
+        )
+    if file_code_map:
+        return (
+            "Takeaway: Is commit me concrete additions aaye, jo implementation ko step-by-step "
+            "improve karte hain even when explicit concept tags detect na ho."
+        )
+    return (
+        "Takeaway: Diff minimal/empty tha, but commit history track karna useful hai so learning "
+        "timeline consistent rehti hai."
+    )
+
+
+def generate_notes_entry(short_sha, message, author, date, concepts, diff_text):
+    entry_num = _count_existing_note_entries() + 1
+    file_code_map = _extract_added_code_by_file(diff_text)
+    additions_summary = _build_new_additions_summary(file_code_map)
+    reason = _infer_reason_hinglish(message, file_code_map)
+    reflection = _build_reflection_hinglish(concepts, file_code_map)
+
+    lines = [
+        "",
+        "---",
+        f"Entry #{entry_num} | Date: {date} | Commit: `{short_sha}`",
+        f"Author: {author}",
+        f"Subject: {message}",
+        "",
+        "[NOTES]",
+        "- Concepts detect hue:",
+    ]
+
+    if concepts:
+        lines.extend([f"  - {concept['name']}" for concept in concepts])
+    else:
+        lines.append("  - Koi specific concept pattern detect nahi hua.")
+
+    lines.extend(
+        [
+            "- Kya naya add hua:",
+            *additions_summary,
+            "- Kyun add hua:",
+            f"  - {reason}",
+            "- Kya samjha (reflection):",
+            f"  - {reflection}",
+            "",
+            "[CODE ADDED]",
+        ]
+    )
+
+    if file_code_map:
+        for file_path, code_lines in file_code_map.items():
+            lines.extend(
+                [
+                    f"File: {file_path}",
+                    "```",
+                    *code_lines[:60],
+                    "```",
+                    "",
+                ]
+            )
+    else:
+        lines.append("No added code lines captured for this commit.")
+
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # File helpers
 # ---------------------------------------------------------------------------
@@ -1520,8 +1689,40 @@ def _initialise_file_if_needed():
             fh.write(header)
 
 
+def _initialise_notes_file_if_needed():
+    if not os.path.exists(KNOWLEDGE_POOL_NOTES_FILE):
+        header = (
+            "Knowledge Pool Notes (Hinglish)\n"
+            "================================\n\n"
+            "Ye file bot-maintained append-only notes hai.\n"
+            "Har human push to `master` par ek naya entry append hota hai jisme:\n"
+            "- Concepts detect hue\n"
+            "- Commit me kya naya add hua\n"
+            "- Kyun add hua (context infer karke)\n"
+            "- Kya samjha (short takeaway)\n\n"
+            "Format:\n"
+            "- [NOTES] = human-friendly summary\n"
+            "- [CODE ADDED] = commit me add hua snippet(s) with file path\n"
+        )
+        with open(KNOWLEDGE_POOL_NOTES_FILE, "w", encoding="utf-8") as fh:
+            fh.write(header)
+
+
+def _entry_exists(file_path, short_sha):
+    if not os.path.exists(file_path):
+        return False
+    with open(file_path, "r", encoding="utf-8") as fh:
+        content = fh.read()
+    return f"Commit: `{short_sha}`" in content
+
+
 def _append_entry(entry):
     with open(KNOWLEDGE_POOL_FILE, "a", encoding="utf-8") as fh:
+        fh.write(entry + "\n")
+
+
+def _append_notes_entry(entry):
+    with open(KNOWLEDGE_POOL_NOTES_FILE, "a", encoding="utf-8") as fh:
         fh.write(entry + "\n")
 
 
@@ -1532,15 +1733,33 @@ def _append_entry(entry):
 def main():
     _ensure_docs_dir()
     _initialise_file_if_needed()
+    _initialise_notes_file_if_needed()
 
     sha, short_sha, message, author, date = get_commit_info()
     diff = get_diff()
     concepts = detect_concepts(diff, message)
     entry = generate_entry(short_sha, message, author, date, concepts)
-    _append_entry(entry)
+    notes_entry = generate_notes_entry(short_sha, message, author, date, concepts, diff)
+
+    md_appended = False
+    notes_appended = False
+    if not _entry_exists(KNOWLEDGE_POOL_FILE, short_sha):
+        _append_entry(entry)
+        md_appended = True
+    if not _entry_exists(KNOWLEDGE_POOL_NOTES_FILE, short_sha):
+        _append_notes_entry(notes_entry)
+        notes_appended = True
 
     total = _count_existing_entries()
-    print(f"Knowledge Pool entry #{total} appended for commit {short_sha} — '{message}'.")
+    notes_total = _count_existing_note_entries()
+    if md_appended:
+        print(f"Knowledge Pool entry #{total} appended for commit {short_sha} — '{message}'.")
+    else:
+        print(f"Knowledge Pool.md already has an entry for commit {short_sha}; skipping append.")
+    if notes_appended:
+        print(f"Knowledge_Pool_Notes.txt entry #{notes_total} appended for commit {short_sha}.")
+    else:
+        print(f"Knowledge_Pool_Notes.txt already has an entry for commit {short_sha}; skipping append.")
     if concepts:
         print(f"  Detected concepts: {', '.join(c['name'] for c in concepts)}")
     else:
