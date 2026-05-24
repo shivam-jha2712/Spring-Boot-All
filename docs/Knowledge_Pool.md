@@ -4055,3 +4055,114 @@ Primitives are stored on the stack (or inlined) and are much faster than their w
 - [Oracle Java Tutorials — Primitive Data Types](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html)
 - [Baeldung: Java Primitive Types](https://www.baeldung.com/java-primitives)
 
+
+---
+
+## Entry #12 — 2026-05-24 | Commit: `584f509` — Added Annotations and Exceptions Related Concepts.
+
+> **Author:** Shivam Jha
+
+### Concepts Introduced
+
+#### Spring MVC REST Controller
+
+`@RestController` is a stereotype annotation that combines `@Controller` and `@ResponseBody`. Every method in a `@RestController` class automatically serialises its return value (typically to JSON via Jackson) and writes it directly to the HTTP response body, bypassing view resolution entirely.
+
+**References:**
+- [Spring API — @RestController](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/bind/annotation/RestController.html)
+- [Spring Guide: Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
+
+#### Spring MVC Request Mapping
+
+Request-mapping annotations (`@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`, `@PatchMapping`) are composed shorthand forms of `@RequestMapping` pre-bound to a specific HTTP method. They map a handler method to a URL path and HTTP verb, enabling clean, RESTful endpoint declarations with minimal boilerplate.
+
+**References:**
+- [Spring MVC Reference — Request Mapping](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-ann-requestmapping)
+- [Baeldung: Spring @RequestMapping Guide](https://www.baeldung.com/spring-requestmapping)
+
+#### Spring MVC Method Argument Binding
+
+Spring MVC automatically binds HTTP request data to handler method parameters. `@RequestBody` deserialises the request body (JSON → Java); `@PathVariable` extracts URI template variables; `@RequestParam` binds query-string or form parameters; `@ResponseBody` serialises the return value to the response body.
+
+**References:**
+- [Spring MVC — Annotated Controller Methods](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-ann-methods)
+- [Baeldung: @RequestBody and @ResponseBody](https://www.baeldung.com/spring-request-response-body)
+
+#### Spring MVC ResponseEntity & HTTP Status Codes
+
+`ResponseEntity<T>` gives full control over the HTTP response: status code, headers, and body. Using it instead of a plain return type lets controllers communicate meaningful HTTP semantics (201 Created, 404 Not Found, etc.) to REST clients, improving API clarity.
+
+**References:**
+- [Spring API — ResponseEntity](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ResponseEntity.html)
+- [Baeldung: Using Spring ResponseEntity](https://www.baeldung.com/spring-response-entity)
+
+#### Spring Global Exception Handling
+
+`@ControllerAdvice` (or `@RestControllerAdvice`) defines cross-cutting exception handlers. Methods annotated with `@ExceptionHandler` intercept specific exception types thrown by any controller, centralising error-response logic and eliminating duplicated try/catch blocks.
+
+**References:**
+- [Spring MVC — @ExceptionHandler](https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-ann-exceptionhandler)
+- [Baeldung: REST Error Handling with Spring](https://www.baeldung.com/exception-handling-for-rest-with-spring)
+
+#### Java Inheritance & the `extends` Keyword
+
+Inheritance lets a **child class** (`extends`) reuse and specialise the fields and methods of a **parent class**. The child inherits all non-private members and can override methods to provide its own implementation. `super` refers to the parent instance — used to call the parent constructor or an overridden method. Java supports single class inheritance but multiple interface implementation.
+
+**References:**
+- [Oracle Java Tutorials — Inheritance](https://docs.oracle.com/javase/tutorial/java/IandI/subclasses.html)
+- [Baeldung: Guide to Inheritance in Java](https://www.baeldung.com/java-inheritance)
+
+#### Java Interfaces & Abstract Classes
+
+An **interface** defines a contract — method signatures without implementation (plus `default` methods since Java 8). A class `implements` one or more interfaces, promising to provide the method bodies. An **abstract class** sits between a concrete class and an interface: it can hold state and concrete methods but cannot be instantiated. Use interfaces for capability contracts and abstract classes for shared base behaviour.
+
+**References:**
+- [Oracle Java Tutorials — Interfaces](https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html)
+- [Baeldung: Interface vs Abstract Class](https://www.baeldung.com/java-interface-vs-abstract-class)
+
+#### Method Overriding in Java
+
+When a subclass provides its own version of a method already defined in its parent, it **overrides** that method. The `@Override` annotation is optional but strongly recommended — the compiler will flag an error if the annotated method does not actually override a superclass method, catching typos and signature mismatches early. At runtime, the JVM uses dynamic dispatch to call the overridden version.
+
+**References:**
+- [Oracle Java Tutorials — Overriding Methods](https://docs.oracle.com/javase/tutorial/java/IandI/override.html)
+- [Baeldung: Method Overriding in Java](https://www.baeldung.com/java-method-overriding)
+
+#### Java Constructors & Object Creation
+
+A **constructor** is a special method invoked via `new ClassName(...)` to initialise a newly allocated object. If no constructor is defined, Java provides a default no-arg constructor. Constructors can be overloaded, and `this(...)` chains one constructor to another within the same class. In Spring, the container calls the constructor when creating a bean, injecting dependencies as constructor arguments.
+
+**References:**
+- [Oracle Java Tutorials — Constructors](https://docs.oracle.com/javase/tutorial/java/javaOO/constructors.html)
+- [Baeldung: Java Constructors](https://www.baeldung.com/java-constructors)
+
+#### Java Access Modifiers
+
+Access modifiers control visibility of classes, fields, and methods:
+
+• **`public`** — accessible from everywhere.
+• **`protected`** — accessible within the same package and subclasses.
+• *default (package-private)* — accessible only within the same package.
+• **`private`** — accessible only within the declaring class.
+
+In interfaces, methods are `public` by default. Choosing the right modifier enforces encapsulation and limits the API surface.
+
+**References:**
+- [Oracle Java Tutorials — Controlling Access](https://docs.oracle.com/javase/tutorial/java/javaOO/accesscontrol.html)
+- [Baeldung: Java Access Modifiers](https://www.baeldung.com/java-access-modifiers)
+
+#### Java Primitive Data Types
+
+Java has eight primitive types:
+
+• **Integers:** `byte` (8-bit), `short` (16-bit), `int` (32-bit), `long` (64-bit)
+• **Floating-point:** `float` (32-bit), `double` (64-bit)
+• **Character:** `char` (16-bit Unicode)
+• **Boolean:** `boolean` (`true`/`false`)
+
+Primitives are stored on the stack (or inlined) and are much faster than their wrapper counterparts. Literal suffixes like `f`, `L`, `d` disambiguate types.
+
+**References:**
+- [Oracle Java Tutorials — Primitive Data Types](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html)
+- [Baeldung: Java Primitive Types](https://www.baeldung.com/java-primitives)
+
