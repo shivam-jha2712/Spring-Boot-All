@@ -21,6 +21,10 @@ from datetime import datetime
 DOCS_DIR = "docs"
 KNOWLEDGE_POOL_FILE = os.path.join(DOCS_DIR, "Knowledge_Pool.md")
 KNOWLEDGE_POOL_NOTES_FILE = os.path.join(DOCS_DIR, "Knowledge_Pool_Notes.txt")
+MAX_NOTES_SAMPLE_LINES = 5
+MAX_NOTES_SNIPPET_LENGTH = 140
+# Keep code snippets readable in a text-note entry and avoid very large bot commits.
+MAX_CODE_LINES_PER_FILE = 60
 
 # ---------------------------------------------------------------------------
 # Concept registry — CODE patterns (annotations, APIs, class names)
@@ -1457,8 +1461,12 @@ def detect_concepts(diff_text, commit_message):
 def _count_existing_entries():
     if not os.path.exists(KNOWLEDGE_POOL_FILE):
         return 0
+    count = 0
     with open(KNOWLEDGE_POOL_FILE, "r", encoding="utf-8") as fh:
-        return len(re.findall(r"^## Entry #\d+", fh.read(), re.MULTILINE))
+        for line in fh:
+            if re.match(r"^## Entry #\d+", line):
+                count += 1
+    return count
 
 
 def generate_entry(short_sha, message, author, date, concepts):
@@ -1502,22 +1510,23 @@ def generate_entry(short_sha, message, author, date, concepts):
 def _count_existing_note_entries():
     if not os.path.exists(KNOWLEDGE_POOL_NOTES_FILE):
         return 0
+    count = 0
     with open(KNOWLEDGE_POOL_NOTES_FILE, "r", encoding="utf-8") as fh:
-        return len(re.findall(r"^Entry #\d+ \|", fh.read(), re.MULTILINE))
+        for line in fh:
+            if re.match(r"^Entry #\d+\s*\|", line):
+                count += 1
+    return count
 
 
 def _extract_added_code_by_file(diff_text):
     file_code_map = {}
     current_file = None
+    in_hunk = False
 
-    for raw_line in diff_text.splitlines():
-        line = raw_line.rstrip("\n")
+    for line in diff_text.splitlines():
         if line.startswith("diff --git "):
-            parts = line.split(" ")
-            if len(parts) >= 4 and parts[3].startswith("b/"):
-                current_file = parts[3][2:]
-            else:
-                current_file = None
+            current_file = None
+            in_hunk = False
             continue
         if line.startswith("+++ "):
             if line.startswith("+++ b/"):
@@ -1526,8 +1535,11 @@ def _extract_added_code_by_file(diff_text):
                 current_file = None
             continue
         if line.startswith("@@"):
+            in_hunk = True
             continue
-        if line.startswith("+") and not line.startswith("+++"):
+        if not in_hunk:
+            continue
+        if line.startswith("+"):
             added_line = line[1:]
             if current_file and added_line.strip():
                 file_code_map.setdefault(current_file, []).append(added_line)
@@ -1553,13 +1565,13 @@ def _build_new_additions_summary(file_code_map):
             snippet = " ".join(line.strip().split())
             if not snippet:
                 continue
-            if len(snippet) > 140:
-                snippet = snippet[:137] + "..."
+            if len(snippet) > MAX_NOTES_SNIPPET_LENGTH:
+                snippet = snippet[: MAX_NOTES_SNIPPET_LENGTH - 3] + "..."
             summary.append(f"  - `{file_path}`: {snippet}")
             sample_count += 1
-            if sample_count >= 5:
+            if sample_count >= MAX_NOTES_SAMPLE_LINES:
                 break
-        if sample_count >= 5:
+        if sample_count >= MAX_NOTES_SAMPLE_LINES:
             break
 
     if sample_count == 0:
@@ -1651,18 +1663,24 @@ def generate_notes_entry(short_sha, message, author, date, concepts, diff_text):
     )
 
     if file_code_map:
-        for file_path, code_lines in file_code_map.items():
+        for file_path, code_lines in sorted(file_code_map.items()):
+            visible_lines = code_lines[:MAX_CODE_LINES_PER_FILE]
             lines.extend(
                 [
                     f"File: {file_path}",
                     "```",
-                    *code_lines[:60],
+                    *visible_lines,
                     "```",
                     "",
                 ]
             )
+            if len(code_lines) > MAX_CODE_LINES_PER_FILE:
+                lines.append(
+                    f"... (truncated, {len(code_lines) - MAX_CODE_LINES_PER_FILE} aur lines add hui thi)"
+                )
+                lines.append("")
     else:
-        lines.append("No added code lines captured for this commit.")
+        lines.append("Is commit me koi added code lines capture nahi hui.")
 
     return "\n".join(lines)
 
@@ -1711,9 +1729,12 @@ def _initialise_notes_file_if_needed():
 def _entry_exists(file_path, short_sha):
     if not os.path.exists(file_path):
         return False
+    pattern = re.compile(rf"Commit:\s*`?{re.escape(short_sha)}`?")
     with open(file_path, "r", encoding="utf-8") as fh:
-        content = fh.read()
-    return f"Commit: `{short_sha}`" in content
+        for line in fh:
+            if pattern.search(line):
+                return True
+    return False
 
 
 def _append_entry(entry):
@@ -1738,15 +1759,17 @@ def main():
     sha, short_sha, message, author, date = get_commit_info()
     diff = get_diff()
     concepts = detect_concepts(diff, message)
-    entry = generate_entry(short_sha, message, author, date, concepts)
-    notes_entry = generate_notes_entry(short_sha, message, author, date, concepts, diff)
+    md_exists = _entry_exists(KNOWLEDGE_POOL_FILE, short_sha)
+    notes_exists = _entry_exists(KNOWLEDGE_POOL_NOTES_FILE, short_sha)
 
     md_appended = False
     notes_appended = False
-    if not _entry_exists(KNOWLEDGE_POOL_FILE, short_sha):
+    if not md_exists:
+        entry = generate_entry(short_sha, message, author, date, concepts)
         _append_entry(entry)
         md_appended = True
-    if not _entry_exists(KNOWLEDGE_POOL_NOTES_FILE, short_sha):
+    if not notes_exists:
+        notes_entry = generate_notes_entry(short_sha, message, author, date, concepts, diff)
         _append_notes_entry(notes_entry)
         notes_appended = True
 
