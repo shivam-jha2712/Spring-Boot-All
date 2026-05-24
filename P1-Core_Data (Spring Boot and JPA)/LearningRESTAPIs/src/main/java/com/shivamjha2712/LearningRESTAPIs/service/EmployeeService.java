@@ -2,6 +2,7 @@ package com.shivamjha2712.LearningRESTAPIs.service;
 
 import com.shivamjha2712.LearningRESTAPIs.dto.EmployeeDto;
 import com.shivamjha2712.LearningRESTAPIs.entites.EmployeeEntity;
+import com.shivamjha2712.LearningRESTAPIs.exceptions.ResourceNotFoundException;
 import com.shivamjha2712.LearningRESTAPIs.repository.EmployeeRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.util.ReflectionUtils;
@@ -50,24 +51,41 @@ public class EmployeeService {
     }
 
     public EmployeeDto updateEmployeebyId(EmployeeDto updatedEmployee, Long employeeId) {
-        EmployeeEntity employeeEntity = employeeRepository.findById(employeeId).orElse(new EmployeeEntity());
-        modelMapper.map(updatedEmployee, employeeEntity); // Create an employee entity from the updated employee DTO object that is being sent by the client.
-//      employeeEntity.setId(employeeId); // Also for the given entity setId for the given employee. -> This is removed taaki jo generated value se khud se generate ho raha hai na id woh generate hota rahe and fase nahi.
-        EmployeeEntity savedEmployeeEntity = employeeRepository.save(employeeEntity); // Save the employeeEntity insite the database using repository.
-        return modelMapper.map(savedEmployeeEntity, EmployeeDto.class); // Map and convert the savedEmployeeEntity back to the EmployeeDto class.
+        // Step 1: pehle check karo employee exist karta hai ya nahi
+        isExistsEmployeeById(employeeId); // check if employee with given id exists in first place or not?
+
+        // Step 2: DTO -> Entity map karo (same style as screenshot)
+        EmployeeEntity employeeEntity = modelMapper.map(updatedEmployee, EmployeeEntity.class);
+
+        // Step 3: IMPORTANT FIX
+        // Pehle issue ye tha ki mapping ke baad id null ho rahi thi, Hibernate error de raha tha:
+        // "Identifier ... altered from <id> to null"
+        // Isliye id ko explicitly path variable se set kar rahe hain.
+        employeeEntity.setId(employeeId);
+
+        // Step 4: save and return response DTO
+        EmployeeEntity savedEmployeeEntity = employeeRepository.save(employeeEntity);
+        return modelMapper.map(savedEmployeeEntity, EmployeeDto.class);
+    }
+
+    // Function to check if employee with the given id exists or not and if it does not exist then throw an exception that employee with the given id is not found.
+    public boolean isExistsEmployeeById(Long employeeId) {
+        boolean exists = employeeRepository.existsById(employeeId);
+        if (!exists) {
+            throw new ResourceNotFoundException("Employee with id: " + employeeId + " not found");
+        }
+        return true;
     }
 
     public boolean deleteEmployeeById(Long employeeId) {
-        boolean employeeExists = employeeRepository.existsById(employeeId);
-        if (!employeeExists) {
-            return false;
-        }
+        isExistsEmployeeById(employeeId); // check if employee with given id exists in first place or not?
         employeeRepository.deleteById(employeeId); // if does then delete that given employee.
         return true;
 
     }
 
     public EmployeeDto patchEmployeeById(Map<String, Object> updatesForPatch, Long employeeId) {
+        isExistsEmployeeById(employeeId); // check if employee with given id exists in first place or not?
         EmployeeEntity employeeEntity = employeeRepository.findById(employeeId).orElse(null);
         updatesForPatch.forEach((field, value) -> {
             Field fieldToBeUpdated = ReflectionUtils.getRequiredField(EmployeeEntity.class, field); // Reflections is a Utility which is used to create a reflection of the DTO that has been created and make updates on that. And then push that reflection in the repository.

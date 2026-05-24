@@ -1,7 +1,9 @@
 package com.shivamjha2712.LearningRESTAPIs.controller;
 
 import com.shivamjha2712.LearningRESTAPIs.dto.EmployeeDto;
+import com.shivamjha2712.LearningRESTAPIs.exceptions.ResourceNotFoundException;
 import com.shivamjha2712.LearningRESTAPIs.service.EmployeeService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@RequestMapping(path = "/getEmployee")
+@RequestMapping(path = "/Employees")
 // This could also be used solely as the parent context which could be used as the main endpoint of url path.
 // Followed by the paths that are being used like "/{employeeId}"
 // This is used to make this class as a controller and to handle the incoming request and send the response back to the client.
@@ -27,7 +29,7 @@ return "Employee Name : Shivam Jha";
 
 
     /**
-     * We can even make the conversion of Employee Entity to Employee DTO so that the modularity and seperation betweeen bothe presentation and persistance layer will remain intact.
+     * We can even make the conversion of Employee Entity to Employee DTO so that the modularity and seperation betweeen both the presentation and persistance layer will remain intact.
      */
 
     private final EmployeeService employeeService; // The usage of service layer in controller has stripped off the usage of employee repository here.
@@ -47,7 +49,7 @@ return "Employee Name : Shivam Jha";
         Optional<EmployeeDto> employeeDto = employeeService.getEmployeeById(id);
         return employeeDto
                 .map(employeeDto1 -> ResponseEntity.ok().body(employeeDto1))
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("Employee with id " + id + " not found"));
     }
 
 
@@ -74,7 +76,7 @@ return "Employee Name : Shivam Jha";
      */
 
     @PostMapping(path = "/addEmployee")
-    public ResponseEntity<EmployeeDto> createEmployee(@RequestBody EmployeeDto inputEmployee) {
+    public ResponseEntity<EmployeeDto> createEmployee(@Valid @RequestBody EmployeeDto inputEmployee) {
         // This can also have logic to check if this can be performed only by the admin that could be something that needs to be checked.
         // To log details associated with this method can also be added here as well.
         EmployeeDto savedEmployeeDto = employeeService.createEmployee(inputEmployee); // Saving an employee in a new DTO and if it gets successful or gets error both are below handled by ResponseEntity<>;
@@ -82,7 +84,7 @@ return "Employee Name : Shivam Jha";
     }
 
     @PutMapping(path = "/{employeeId}")
-    public ResponseEntity<EmployeeDto> updateEmployeebyId(@RequestBody EmployeeDto updatedEmployee, @PathVariable Long employeeId) {
+    public ResponseEntity<EmployeeDto> updateEmployeebyId(@Valid @RequestBody EmployeeDto updatedEmployee, @PathVariable Long employeeId) {
         return ResponseEntity.ok(employeeService.updateEmployeebyId(updatedEmployee, employeeId)); // in this only thing will throw error if not updated so no such validation needed.
     }
 
