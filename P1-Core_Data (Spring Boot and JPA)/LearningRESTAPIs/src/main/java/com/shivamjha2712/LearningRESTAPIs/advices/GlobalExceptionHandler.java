@@ -11,45 +11,78 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Global exception handler for the REST API.
- * Centralized handling of exceptions across all controllers.
- * Converts domain exceptions into standardized API error responses.
- * Uses Spring's @RestControllerAdvice to intercept exceptions and provide
- * consistent error formatting to API clients.
+ * GlobalExceptionHandler
+ * <p>
+ * Hinglish summary:
+ * - Yeh class application-wide exceptions ko centralize karke handle karti hai.
+ * - Controller se jab koi exception throw hota hai, Spring yahan corresponding @ExceptionHandler
+ * method ko call karega aur hum standardized `ApiResponse<ApiError>` bhejenge.
+ * - Standard format se client-side pe error handling consistent ho jaati hai.
+ * <p>
+ * Note:
+ * - Success responses ko tumhara `GlobalResponseHandler` wrap karta hai (ApiResponse).
+ * - Error responses yahan ApiError create karke `ApiResponse<ApiError>` me bheje jaate hain.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Handles ResourceNotFoundException and returns a standardized error response.
-     * Converts the domain exception into an ApiError object with HTTP 404 status.
-     *
-     * @param exception The ResourceNotFoundException that was thrown
-     * @return ResponseEntity containing ApiError with HTTP 404 (NOT_FOUND) status
+     * handleResourceNotFound
+     * <p>
+     * Hinglish:
+     * - Ye handler `ResourceNotFoundException` ko catch karta hai (jab koi requested resource na mile).
+     * - Hum ek `ApiError` banate hain jisme HTTP 404 status aur descriptive message hota hai.
+     * - Fir `buildErrorResponseEntity` ko use karke `ApiResponse<ApiError>` ke saath response bhejte hain.
+     * <p>
+     * Behavior:
+     * - Client ko HTTP 404 status milega aur body me `ApiResponse` jisme `error` field set hogi.
      */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiError> handleResourceNotFound(ResourceNotFoundException exception) {
+    public ResponseEntity<ApiResponse<?>> handleResourceNotFound(ResourceNotFoundException exception) {
         ApiError apiError = ApiError.builder()
                 .status(HttpStatus.NOT_FOUND)
                 .message(exception.getMessage())
                 .build();
-        return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
+        return buildErrorResponseEntity(apiError);
     }
 
-    //Example of sample error to justify how to create and add your own version of custom exceptions for your use case and then handle it in the global exception handler to send the response back to the client in a standardized format.
+    /**
+     * handleInternalServerError
+     * <p>
+     * Hinglish:
+     * - Generic fallback handler for any uncaught `Exception`.
+     * - Production me aise generic handler important hai taaki server-side stack traces client pe na jayein.
+     * - Yahan hum HTTP 500 aur exception message ko `ApiError` me wrap kar ke bhejte hain.
+     * <p>
+     * Behavior:
+     * - Client ko HTTP 500 aur standardized `ApiResponse<ApiError>` milega.
+     */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleInternalServerError(Exception exception) {
+    public ResponseEntity<ApiResponse<?>> handleInternalServerError(Exception exception) {
         ApiError apiError = ApiError.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .message(exception.getMessage())
                 .build();
-        return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);
+        return buildErrorResponseEntity(apiError);
     }
-    // This is also going to give you only the bindedresult of the error which is not going to be very much understandable by any one other than who knows the system thus to handle that we can create a custom exception for the validation error and then handle that in the global exception handler to send the response back to the client in a standardized format.
 
-    // The Custom Exception of dealing with those validation error can be justified as follows:
+    // Example note (Hinglish):
+    // - Neeche waala MethodArgumentNotValidException handler validation errors ko readable list me convert karta hai.
+    // - Ye default bindResult messages ko collect karke client ko bhejta hai in `subErrors` field ke through.
+
+    /**
+     * handleMethodArgumentNotValid
+     * <p>
+     * Hinglish:
+     * - Jab controller method ke @Valid annotated parameters fail karte hain, Spring `MethodArgumentNotValidException` throw karta hai.
+     * - Hum bindingResult se saare error messages collect kar ke `subErrors` list banate hain.
+     * - Fir ApiError me status 400 aur message "Input Validation Failed" ke saath bhejte hain.
+     * <p>
+     * Behavior:
+     * - Client ko HTTP 400 aur `ApiResponse<ApiError>` milega jisme `subErrors` me validation messages honge.
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValid(MethodArgumentNotValidException exception) {
         List<String> errors = exception
                 .getBindingResult()
                 .getAllErrors()
@@ -62,7 +95,23 @@ public class GlobalExceptionHandler {
                 .message("Input Validation Failed")
                 .subErrors(errors)
                 .build();
-        return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
+        return buildErrorResponseEntity(apiError);
+    }
+
+
+    /**
+     * buildErrorResponseEntity
+     * <p>
+     * Hinglish:
+     * - Helper method jo `ApiError` ko `ApiResponse<ApiError>` me wrap karta hai aur appropriate HTTP status set karta hai.
+     * - Yahan hum `new ApiResponse<>(apiError)` use karte hain taaki response body standardized rahe.
+     * <p>
+     * Behavior:
+     * - Returns ResponseEntity with body `ApiResponse<ApiError>` and HTTP status from `apiError`.
+     */
+    private ResponseEntity<ApiResponse<?>> buildErrorResponseEntity(ApiError apiError) {
+        return new ResponseEntity<>(new ApiResponse<>(apiError),
+                apiError.getStatus());
     }
 
 }
