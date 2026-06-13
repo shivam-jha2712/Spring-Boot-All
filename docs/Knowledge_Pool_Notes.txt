@@ -1,0 +1,13 @@
+Knowledge Pool Notes (Hinglish)
+================================
+
+Ye file bot-maintained append-only notes hai.
+Har human push to `master` par ek naya entry append hota hai jisme:
+- Concepts detect hue
+- Commit me kya naya add hua
+- Kyun add hua (context infer karke)
+- Kya samjha (short takeaway)
+
+Format:
+- [NOTES] = human-friendly summary
+- [CODE ADDED] = commit me add hua snippet(s) with file path

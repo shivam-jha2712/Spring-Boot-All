@@ -30,14 +30,14 @@ jobs:
       - name: Generate knowledge pool entry
         run: python scripts/generate_knowledge_entry.py
 
-      - name: Commit and push updated Knowledge_Pool.md
+      - name: Commit and push updated knowledge pool files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/Knowledge_Pool.md
+          git add docs/Knowledge_Pool.md docs/Knowledge_Pool_Notes.txt
           if git diff --cached --quiet; then
-            echo "No changes to docs/Knowledge_Pool.md — skipping commit."
+            echo "No changes to knowledge pool files — skipping commit."
           else
-            git commit -m "docs: update Knowledge_Pool.md for commit ${{ github.sha }}"
+            git commit -m "docs: update knowledge pool files for commit ${{ github.sha }}"
             git push
           fi
