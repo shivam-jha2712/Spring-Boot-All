@@ -4269,3 +4269,128 @@ Primitives are stored on the stack (or inlined) and are much faster than their w
 - [Oracle Java Tutorials — Primitive Data Types](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html)
 - [Baeldung: Java Primitive Types](https://www.baeldung.com/java-primitives)
 
+
+---
+
+## Entry #14 — 2026-06-21 | Commit: `2f82a6d` — Basic JPA related details have been added.
+
+> **Author:** Shivam Jha
+
+### Concepts Introduced
+
+#### Spring Boot Auto-Configuration & Application Bootstrap
+
+`@SpringBootApplication` is a convenience meta-annotation that combines `@Configuration`, `@EnableAutoConfiguration`, and `@ComponentScan`. It marks the main class of a Spring Boot application, triggers classpath scanning for beans, and enables opinionated auto-configuration so that sensible infrastructure defaults are applied without any manual bean declarations.
+
+**References:**
+- [Spring Boot Reference — @SpringBootApplication](https://docs.spring.io/spring-boot/docs/current/reference/html/using.html#using.using-the-springbootapplication-annotation)
+- [Spring Boot Auto-Configuration Classes](https://docs.spring.io/spring-boot/docs/current/reference/html/auto-configuration-classes.html)
+
+#### JPA / Hibernate Entity Mapping
+
+JPA annotations map Java classes to relational database tables. `@Entity` marks a POJO as a persistent entity; `@Table` and `@Column` customise table/column names. `@Id` defines the primary key and `@GeneratedValue` delegates key generation to the database or a sequence. Relationship annotations (`@OneToMany`, `@ManyToOne`, etc.) model foreign-key associations.
+
+**References:**
+- [Jakarta Persistence 3.1 Specification](https://jakarta.ee/specifications/persistence/3.1/jakarta-persistence-spec-3.1.html)
+- [Baeldung: JPA Entities](https://www.baeldung.com/jpa-entities)
+- [Spring Data JPA Reference](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/)
+
+#### Spring Data JPA Repositories
+
+Spring Data JPA repositories eliminate boilerplate DAO code. Extending `JpaRepository<T, ID>` provides CRUD operations, pagination, and sorting out of the box — Spring generates the implementation at runtime via dynamic proxies. Derived query methods (e.g., `findByEmail`) are automatically translated into JPQL without writing any SQL.
+
+**References:**
+- [Spring Data JPA Reference — Repositories](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories)
+- [Baeldung: Spring Data Repositories](https://www.baeldung.com/spring-data-repositories)
+
+#### Spring Boot Testing Slices
+
+Spring Boot's test slices load only a relevant portion of the application context to keep tests fast. `@SpringBootTest` loads the full context; `@WebMvcTest` loads only the web layer; `@DataJpaTest` loads only JPA components. `MockMvc` enables controller testing without a running server, and `@MockBean` replaces a real bean with a Mockito mock.
+
+**References:**
+- [Spring Boot Test Auto-Configuration](https://docs.spring.io/spring-boot/docs/current/reference/html/test-auto-configuration.html)
+- [Baeldung: Testing in Spring Boot](https://www.baeldung.com/spring-boot-testing)
+
+#### Java Inheritance & the `extends` Keyword
+
+Inheritance lets a **child class** (`extends`) reuse and specialise the fields and methods of a **parent class**. The child inherits all non-private members and can override methods to provide its own implementation. `super` refers to the parent instance — used to call the parent constructor or an overridden method. Java supports single class inheritance but multiple interface implementation.
+
+**References:**
+- [Oracle Java Tutorials — Inheritance](https://docs.oracle.com/javase/tutorial/java/IandI/subclasses.html)
+- [Baeldung: Guide to Inheritance in Java](https://www.baeldung.com/java-inheritance)
+
+#### Java Interfaces & Abstract Classes
+
+An **interface** defines a contract — method signatures without implementation (plus `default` methods since Java 8). A class `implements` one or more interfaces, promising to provide the method bodies. An **abstract class** sits between a concrete class and an interface: it can hold state and concrete methods but cannot be instantiated. Use interfaces for capability contracts and abstract classes for shared base behaviour.
+
+**References:**
+- [Oracle Java Tutorials — Interfaces](https://docs.oracle.com/javase/tutorial/java/IandI/createinterface.html)
+- [Baeldung: Interface vs Abstract Class](https://www.baeldung.com/java-interface-vs-abstract-class)
+
+#### Method Overriding in Java
+
+When a subclass provides its own version of a method already defined in its parent, it **overrides** that method. The `@Override` annotation is optional but strongly recommended — the compiler will flag an error if the annotated method does not actually override a superclass method, catching typos and signature mismatches early. At runtime, the JVM uses dynamic dispatch to call the overridden version.
+
+**References:**
+- [Oracle Java Tutorials — Overriding Methods](https://docs.oracle.com/javase/tutorial/java/IandI/override.html)
+- [Baeldung: Method Overriding in Java](https://www.baeldung.com/java-method-overriding)
+
+#### Java Type Casting
+
+Java supports two kinds of type conversion:
+
+• **Widening (implicit)** — smaller type → larger type (`int` → `double`) — no data loss, done automatically.
+• **Narrowing (explicit)** — larger type → smaller type (`double` → `int`) — may lose precision, requires a cast operator `(int) d`.
+
+Casts between reference types follow the class hierarchy and may throw `ClassCastException` at runtime if the object is not actually an instance of the target type.
+
+**References:**
+- [Java Language Spec — Conversions and Contexts](https://docs.oracle.com/javase/specs/jls/se17/html/jls-5.html)
+- [Baeldung: Java Type Casting](https://www.baeldung.com/java-type-casting)
+
+#### Java Constructors & Object Creation
+
+A **constructor** is a special method invoked via `new ClassName(...)` to initialise a newly allocated object. If no constructor is defined, Java provides a default no-arg constructor. Constructors can be overloaded, and `this(...)` chains one constructor to another within the same class. In Spring, the container calls the constructor when creating a bean, injecting dependencies as constructor arguments.
+
+**References:**
+- [Oracle Java Tutorials — Constructors](https://docs.oracle.com/javase/tutorial/java/javaOO/constructors.html)
+- [Baeldung: Java Constructors](https://www.baeldung.com/java-constructors)
+
+#### Java Access Modifiers
+
+Access modifiers control visibility of classes, fields, and methods:
+
+• **`public`** — accessible from everywhere.
+• **`protected`** — accessible within the same package and subclasses.
+• *default (package-private)* — accessible only within the same package.
+• **`private`** — accessible only within the declaring class.
+
+In interfaces, methods are `public` by default. Choosing the right modifier enforces encapsulation and limits the API surface.
+
+**References:**
+- [Oracle Java Tutorials — Controlling Access](https://docs.oracle.com/javase/tutorial/java/javaOO/accesscontrol.html)
+- [Baeldung: Java Access Modifiers](https://www.baeldung.com/java-access-modifiers)
+
+#### Java `static` Keyword
+
+The `static` modifier means the member belongs to the **class** rather than to any instance. Static fields are shared across all instances; static methods can be called without creating an object. `main(String[])` is static because the JVM needs an entry point before any object exists. A common pitfall: static methods cannot access instance fields or call instance methods directly.
+
+**References:**
+- [Oracle Java Tutorials — Class Variables](https://docs.oracle.com/javase/tutorial/java/javaOO/classvars.html)
+- [Baeldung: The static Keyword in Java](https://www.baeldung.com/java-static)
+
+#### Java Primitive Data Types
+
+Java has eight primitive types:
+
+• **Integers:** `byte` (8-bit), `short` (16-bit), `int` (32-bit), `long` (64-bit)
+• **Floating-point:** `float` (32-bit), `double` (64-bit)
+• **Character:** `char` (16-bit Unicode)
+• **Boolean:** `boolean` (`true`/`false`)
+
+Primitives are stored on the stack (or inlined) and are much faster than their wrapper counterparts. Literal suffixes like `f`, `L`, `d` disambiguate types.
+
+**References:**
+- [Oracle Java Tutorials — Primitive Data Types](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html)
+- [Baeldung: Java Primitive Types](https://www.baeldung.com/java-primitives)
+
