@@ -11,3 +11,116 @@ Har human push to `master` par ek naya entry append hota hai jisme:
 Format:
 - [NOTES] = human-friendly summary
 - [CODE ADDED] = commit me add hua snippet(s) with file path
+
+---
+Entry #1 | Date: 2026-06-21 | Commit: `2f33870`
+Author: Shivam Jha
+Subject: Merge pull request #7 from shivam-jha2712/copilot/add-knowledge-pool-notes-file
+
+[NOTES]
+- Concepts detect hue:
+  - Java Type Casting
+  - Java Primitive Data Types
+- Kya naya add hua:
+- Total `230` added lines detect hui across `3` file(s).
+- Naya add hua (sample):
+  - `.github/workflows/update-knowledge-pool.yml`: - name: Commit and push updated knowledge pool files
+  - `.github/workflows/update-knowledge-pool.yml`: git add docs/Knowledge_Pool.md docs/Knowledge_Pool_Notes.txt
+  - `.github/workflows/update-knowledge-pool.yml`: echo "No changes to knowledge pool files — skipping commit."
+  - `.github/workflows/update-knowledge-pool.yml`: git commit -m "docs: update knowledge pool files for commit ${{ github.sha }}"
+  - `docs/Knowledge_Pool_Notes.txt`: Knowledge Pool Notes (Hinglish)
+- Kyun add hua:
+  - Reason clear nahi hai. Commit message: "Merge pull request #7 from shivam-jha2712/copilot/add-knowledge-pool-notes-file".
+- Kya samjha (reflection):
+  - Takeaway: Is commit se `Java Type Casting, Java Primitive Data Types` jaise concepts practical context me samajhne ko mile. Small incremental examples se understanding strong hoti hai.
+
+[CODE ADDED]
+File: .github/workflows/update-knowledge-pool.yml
+```
+      - name: Commit and push updated knowledge pool files
+          git add docs/Knowledge_Pool.md docs/Knowledge_Pool_Notes.txt
+            echo "No changes to knowledge pool files — skipping commit."
+            git commit -m "docs: update knowledge pool files for commit ${{ github.sha }}"
+```
+
+File: docs/Knowledge_Pool_Notes.txt
+```
+Knowledge Pool Notes (Hinglish)
+================================
+Ye file bot-maintained append-only notes hai.
+Har human push to `master` par ek naya entry append hota hai jisme:
+- Concepts detect hue
+- Commit me kya naya add hua
+- Kyun add hua (context infer karke)
+- Kya samjha (short takeaway)
+Format:
+- [NOTES] = human-friendly summary
+- [CODE ADDED] = commit me add hua snippet(s) with file path
+```
+
+File: scripts/generate_knowledge_entry.py
+```
+KNOWLEDGE_POOL_NOTES_FILE = os.path.join(DOCS_DIR, "Knowledge_Pool_Notes.txt")
+MAX_NOTES_SAMPLE_LINES = 5
+MAX_NOTES_SNIPPET_LENGTH = 140
+# Keep code snippets readable in a text-note entry and avoid very large bot commits.
+MAX_CODE_LINES_PER_FILE = 60
+    count = 0
+        for line in fh:
+            if re.match(r"^## Entry #\d+", line):
+                count += 1
+    return count
+def _count_existing_note_entries():
+    if not os.path.exists(KNOWLEDGE_POOL_NOTES_FILE):
+        return 0
+    count = 0
+    with open(KNOWLEDGE_POOL_NOTES_FILE, "r", encoding="utf-8") as fh:
+        for line in fh:
+            if re.match(r"^Entry #\d+\s*\|", line):
+                count += 1
+    return count
+def _extract_added_code_by_file(diff_text):
+    file_code_map = {}
+    current_file = None
+    in_hunk = False
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            current_file = None
+            in_hunk = False
+            continue
+        if line.startswith("+++ "):
+            if line.startswith("+++ b/"):
+                current_file = line[6:]
+            elif line == "+++ /dev/null":
+                current_file = None
+            continue
+        if line.startswith("@@"):
+            in_hunk = True
+            continue
+        if not in_hunk:
+            continue
+        if line.startswith("+"):
+            added_line = line[1:]
+            if current_file and added_line.strip():
+                file_code_map.setdefault(current_file, []).append(added_line)
+    return file_code_map
+def _build_new_additions_summary(file_code_map):
+    if not file_code_map:
+        return [
+            "- Is commit me koi clear added code line detect nahi hui (ya diff empty tha)."
+        ]
+    total_added = sum(len(lines) for lines in file_code_map.values())
+    summary = [
+        f"- Total `{total_added}` added lines detect hui across `{len(file_code_map)}` file(s).",
+        "- Naya add hua (sample):",
+    ]
+    sample_count = 0
+    for file_path, lines in file_code_map.items():
+        for line in lines:
+            snippet = " ".join(line.strip().split())
+            if not snippet:
+                continue
+```
+
+... (truncated, 155 aur lines add hui thi)
+

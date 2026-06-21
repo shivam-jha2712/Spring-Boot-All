@@ -4394,3 +4394,40 @@ Primitives are stored on the stack (or inlined) and are much faster than their w
 - [Oracle Java Tutorials — Primitive Data Types](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html)
 - [Baeldung: Java Primitive Types](https://www.baeldung.com/java-primitives)
 
+
+---
+
+## Entry #15 — 2026-06-21 | Commit: `2f33870` — Merge pull request #7 from shivam-jha2712/copilot/add-knowledge-pool-notes-file
+
+> **Author:** Shivam Jha
+
+### Concepts Introduced
+
+#### Java Type Casting
+
+Java supports two kinds of type conversion:
+
+• **Widening (implicit)** — smaller type → larger type (`int` → `double`) — no data loss, done automatically.
+• **Narrowing (explicit)** — larger type → smaller type (`double` → `int`) — may lose precision, requires a cast operator `(int) d`.
+
+Casts between reference types follow the class hierarchy and may throw `ClassCastException` at runtime if the object is not actually an instance of the target type.
+
+**References:**
+- [Java Language Spec — Conversions and Contexts](https://docs.oracle.com/javase/specs/jls/se17/html/jls-5.html)
+- [Baeldung: Java Type Casting](https://www.baeldung.com/java-type-casting)
+
+#### Java Primitive Data Types
+
+Java has eight primitive types:
+
+• **Integers:** `byte` (8-bit), `short` (16-bit), `int` (32-bit), `long` (64-bit)
+• **Floating-point:** `float` (32-bit), `double` (64-bit)
+• **Character:** `char` (16-bit Unicode)
+• **Boolean:** `boolean` (`true`/`false`)
+
+Primitives are stored on the stack (or inlined) and are much faster than their wrapper counterparts. Literal suffixes like `f`, `L`, `d` disambiguate types.
+
+**References:**
+- [Oracle Java Tutorials — Primitive Data Types](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/datatypes.html)
+- [Baeldung: Java Primitive Types](https://www.baeldung.com/java-primitives)
+
